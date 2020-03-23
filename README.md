@@ -2,7 +2,7 @@
 `pytorch` implementation of algorithm described in [Visualizing Data using t-SNE](https://lvdmaaten.github.io/publications/papers/JMLR_2014.pdf). This code support cuda accelerating.
 
 ## How to use it
-Just download the repository, and the put feature file and labels file with code
+Just download the repository, and the unzip mnist2500_X.zip or put feature file and labels file with code
 1. run without cuda support
 ```bash
 python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda 0
