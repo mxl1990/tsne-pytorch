@@ -19,7 +19,9 @@ python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda
 
 ## Example
 This is our result compare to result of python implementation.
+* pytorch result
 ![pytorch result](images/pytorch.png)
+* python result
 ![python result](images/python.png)
 
 
