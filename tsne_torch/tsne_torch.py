@@ -17,7 +17,7 @@ from typing import Union
 
 import numpy as np
 import torch
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 
 # noinspection PyPep8Naming
@@ -215,11 +215,13 @@ class TorchTSNE:
             perplexity: float = 30.0,
             n_iter: int = 1000,
             n_components: int = 2,
+            initial_dims: int = 50,
             verbose: bool = False
     ):
         self.perplexity = perplexity
         self.n_iter = n_iter
         self.n_components = n_components
+        self.initial_dims = initial_dims
         self.verbose = verbose
 
     # noinspection PyPep8Naming,PyUnusedLocal
@@ -235,7 +237,7 @@ class TorchTSNE:
             return _tsne(
                 X,
                 no_dims=self.n_components,
-                initial_dims=50,
+                initial_dims=self.initial_dims,
                 perplexity=self.perplexity,
                 verbose=self.verbose,
                 max_iter=self.n_iter

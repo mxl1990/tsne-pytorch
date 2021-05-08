@@ -131,3 +131,6 @@ dmypy.json
 # IntelliJ
 .idea/
 *.iml
+
+# Misc
+mnist2500_X.txt
