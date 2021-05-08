@@ -5,6 +5,12 @@ CUDA-accelerated PyTorch implementation of the t-stochastic neighbor embedding a
 
 Requires Python 3.7
 
+### Install via Pip
+
+```bash
+pip3 install tsne-torch
+```
+
 ### Install from Source
 
 ```bash
