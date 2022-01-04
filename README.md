@@ -3,7 +3,9 @@
 
 ## How to use it
 Just download the repository, and the unzip mnist2500_X.zip or put feature file and labels file with code
-1. run without cuda support
+
+<p align="left">1. run without cuda support</p>
+
 ```bash
 python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda 0
 ```
