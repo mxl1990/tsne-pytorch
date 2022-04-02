@@ -22,12 +22,16 @@ python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda
 ## Example
 This is our result compare to result of python implementation.
 * pytorch result
+* use time 352s on 2080Ti GPU
 
+![computing time](images/pytorch_result.png)
 ![pytorch result](images/pytorch.png)
+
 * python result
+* use time 634s on CPU
 
+![computing time](images/python_result.png)
 ![python result](images/python.png)
-
 
 
 ## Credit
