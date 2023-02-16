@@ -13,6 +13,7 @@ python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda
 ```bash
 python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda 1
 ```
+***Note:*** The input data should be normalized to the range [0.0, 1.0], otherwise you may get the 'nan' result.
 
 ## Requirements
 * pytorch
