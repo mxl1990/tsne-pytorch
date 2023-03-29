@@ -12,70 +12,52 @@
 #  Created by Xiao Li on 23-03-2020.
 #  Copyright (c) 2020. All rights reserved.
 import numpy as np
-import matplotlib.pyplot as pyplot
+import matplotlib.pyplot as plt
 import argparse
 import torch
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--xfile", type=str, default="mnist2500_X.txt", help="file name of feature stored")
-parser.add_argument("--yfile", type=str, default="mnist2500_labels.txt", help="file name of label stored")
-parser.add_argument("--cuda", type=int, default=1, help="if use cuda accelarate")
-
-opt = parser.parse_args()
-print("get choice from args", opt)
-xfile = opt.xfile
-yfile = opt.yfile
-
-if opt.cuda:
-    print("set use cuda")
-    torch.set_default_tensor_type(torch.cuda.DoubleTensor)
-else:
-    torch.set_default_tensor_type(torch.DoubleTensor)
 
 
 def Hbeta_torch(D, beta=1.0):
-    P = torch.exp(-D.clone() * beta)
-
-    sumP = torch.sum(P)
-
-    H = torch.log(sumP) + beta * torch.sum(D * P) / sumP
-    P = P / sumP
-
+    P = (-D).exp() * beta
+    SP = P.sum()
+    H = SP.log() + beta * (D * P).sum() / SP
+    P /= SP
     return H, P
 
 
-def x2p_torch(X, tol=1e-5, perplexity=30.0):
+def x2p_torch(X:torch.FloatTensor, tol=1e-5, perplexity=30.0, verbose=False):
     """
         Performs a binary search to get P-values in such a way that each
         conditional Gaussian has the same perplexity.
     """
 
     # Initialize some variables
-    print("Computing pairwise distances...")
-    (n, d) = X.shape
+    if verbose:
+        print("Computing pairwise distances")
+    M = X.size(0)
 
-    sum_X = torch.sum(X*X, 1)
-    D = torch.add(torch.add(-2 * torch.mm(X, X.t()), sum_X).t(), sum_X)
+    SSX = (X**2).sum(1)
+    D = ((X @ X.T) * -2 + SSX).T + SSX
 
-    P = torch.zeros(n, n)
-    beta = torch.ones(n, 1)
-    logU = torch.log(torch.tensor([perplexity]))
-    n_list = [i for i in range(n)]
+    P = X.new_zeros(M, M)
+    beta = X.new_ones(M, 1)
+    logU = torch.tensor([perplexity]).log()
+    indices = torch.arange(M)
 
     # Loop over all datapoints
-    for i in range(n):
+    for i in range(M):
 
         # Print progress
-        if i % 500 == 0:
-            print("Computing P-values for point %d of %d..." % (i, n))
+        if i % 500 == 0 and verbose:
+            print(f"Computing P-values for point {i} of {M}")
 
         # Compute the Gaussian kernel and entropy for the current precision
         # there may be something wrong with this setting None
         betamin = None
         betamax = None
-        Di = D[i, n_list[0:i]+n_list[i+1:n]]
-
-        (H, thisP) = Hbeta_torch(Di, beta[i])
+        Di = D[i, torch.cat([indices[:i], indices[i+1:M]])]
+        H, thisP = Hbeta_torch(Di, beta[i])
 
         # Evaluate whether the perplexity is within tolerance
         Hdiff = H - logU
@@ -86,156 +68,142 @@ def x2p_torch(X, tol=1e-5, perplexity=30.0):
             if Hdiff > 0:
                 betamin = beta[i].clone()
                 if betamax is None:
-                    beta[i] = beta[i] * 2.
+                    beta[i] *= 2.
                 else:
                     beta[i] = (beta[i] + betamax) / 2.
             else:
                 betamax = beta[i].clone()
                 if betamin is None:
-                    beta[i] = beta[i] / 2.
+                    beta[i] /= 2.
                 else:
                     beta[i] = (beta[i] + betamin) / 2.
 
             # Recompute the values
-            (H, thisP) = Hbeta_torch(Di, beta[i])
+            H, thisP = Hbeta_torch(Di, beta[i])
 
             Hdiff = H - logU
             tries += 1
 
         # Set the final row of P
-        P[i, n_list[0:i]+n_list[i+1:n]] = thisP
+        P[i, torch.cat([indices[:i], indices[i+1:M]])] = thisP
 
     # Return final P-matrix
     return P
 
 
-def pca_torch(X, no_dims=50):
-    print("Preprocessing the data using PCA...")
-    (n, d) = X.shape
-    X = X - torch.mean(X, 0)
-
-    (l, M) = torch.eig(torch.mm(X.t(), X), True)
-    # split M real
-    # this part may be some difference for complex eigenvalue
-    # but complex eignevalue is meanless here, so they are replaced by their real part
-    i = 0
-    while i < d:
-        if l[i, 1] != 0:
-            M[:, i+1] = M[:, i]
-            i += 2
-        else:
-            i += 1
-
-    Y = torch.mm(X, M[:, 0:no_dims])
-    return Y
+def pca_torch(X, k=50, device="cuda"):
+    assert X.ndim == 2, "X should be a 2D array"
+    *_, V = torch.pca_lowrank(X)
+    return X @ V[:, :k]
 
 
-def tsne(X, no_dims=2, initial_dims=50, perplexity=30.0):
+@torch.no_grad()
+def tsne(
+    X:torch.FloatTensor, 
+    k:int=2, 
+    initial_dims:int=50, 
+    perplexity:float=30.0, 
+    max_iter:int=1000,
+    initial_momentum:float=0.5,
+    final_momentum:float=0.8,
+    eta:float=500,
+    min_gain:float=0.01,
+    eps:float=1e-12,
+    device="cuda", 
+    verbose=False
+) -> torch.FloatTensor:
     """
         Runs t-SNE on the dataset in the NxD array X to reduce its
-        dimensionality to no_dims dimensions. The syntaxis of the function is
-        `Y = tsne.tsne(X, no_dims, perplexity), where X is an NxD NumPy array.
+        dimensionality to k dimensions. Usage:
+        `Y = tsne.tsne(X, k, perplexity)`
     """
 
     # Check inputs
-    if isinstance(no_dims, float):
-        print("Error: array X should not have type float.")
-        return -1
-    if round(no_dims) != no_dims:
-        print("Error: number of dimensions should be an integer.")
-        return -1
+    if not isinstance(k, int):
+        raise TypeError("k is expected to be an integer")
+    if not isinstance(initial_dims, int):
+        raise TypeError("initial_dims is expected to be an integer")
 
     # Initialize variables
-    X = pca_torch(X, initial_dims)
-    (n, d) = X.shape
-    max_iter = 1000
-    initial_momentum = 0.5
-    final_momentum = 0.8
-    eta = 500
-    min_gain = 0.01
-    Y = torch.randn(n, no_dims)
-    dY = torch.zeros(n, no_dims)
-    iY = torch.zeros(n, no_dims)
-    gains = torch.ones(n, no_dims)
+    if X.size(1) > initial_dims:
+        if verbose:
+            print("Preprocessing the data using PCA")
+        X = pca_torch(X, initial_dims)
+
+    M = X.size(0)
+    X = X.to(device)
+    Y = torch.randn(M, k).to(device)
+    dY = torch.zeros_like(Y)
+    iY = torch.zeros_like(Y)
+    gains = torch.ones_like(Y)
 
     # Compute P-values
-    P = x2p_torch(X, 1e-5, perplexity)
-    P = P + P.t()
-    P = P / torch.sum(P)
-    P = P * 4.    # early exaggeration
-    print("get P shape", P.shape)
-    P = torch.max(P, torch.tensor([1e-21]))
+    P = x2p_torch(X, 1e-5, perplexity, verbose)
+    P += P.T.clone()
+    P /= P.sum()
+    P *= 4      # early exaggeration
+    P = torch.max(P, torch.tensor([eps]))
 
     # Run iterations
-    for iter in range(max_iter):
+    for iter in range(1, max_iter + 1):
 
         # Compute pairwise affinities
-        sum_Y = torch.sum(Y*Y, 1)
-        num = -2. * torch.mm(Y, Y.t())
-        num = 1. / (1. + torch.add(torch.add(num, sum_Y).t(), sum_Y))
-        num[range(n), range(n)] = 0.
-        Q = num / torch.sum(num)
-        Q = torch.max(Q, torch.tensor([1e-12]))
+        SSY = (Y ** 2).sum(1)
+        num = -2. * (Y @ Y.T)
+        num = (1 + (num + SSY).T + SSY) ** -1
+        num[torch.arange(M), torch.arange(M)] = 0.
+        Q = num / num.sum()
+        Q = torch.max(Q, torch.tensor([eps]))
 
         # Compute gradient
         PQ = P - Q
-        for i in range(n):
-            dY[i, :] = torch.sum((PQ[:, i] * num[:, i]).repeat(no_dims, 1).t() * (Y[i, :] - Y), 0)
+        for i in range(M):
+            dY[i, :] = ((PQ[:, i] * num[:, i]).repeat(k, 1).T * (Y[i, :] - Y)).sum(0)
 
         # Perform the update
-        if iter < 20:
+        if iter <= 20:
             momentum = initial_momentum
         else:
             momentum = final_momentum
 
-        gains = (gains + 0.2) * ((dY > 0.) != (iY > 0.)).double() + (gains * 0.8) * ((dY > 0.) == (iY > 0.)).double()
+        mask = (dY > 0) == (iY > 0)
+        gains = (gains * 0.2) * (~mask).float() + (gains * 0.8) * mask.float()
         gains[gains < min_gain] = min_gain
-        iY = momentum * iY - eta * (gains * dY)
-        Y = Y + iY
-        Y = Y - torch.mean(Y, 0)
+        iY = momentum * iY - eta * gains * dY
+        Y += iY
+        Y -= Y.mean(0)
 
         # Compute current value of cost function
-        if (iter + 1) % 10 == 0:
-            C = torch.sum(P * torch.log(P / Q))
-            print("Iteration %d: error is %f" % (iter + 1, C))
+        if iter % 10 == 0:
+            C = (P * (P / Q).log()).sum()
+            if verbose:
+                print(f"Iteration {iter}: error is {C}")
 
         # Stop lying about P-values
         if iter == 100:
-            P = P / 4.
+            P /= 4
 
     # Return solution
-    return Y
+    return Y.cpu()
 
 
 if __name__ == "__main__":
-    print("Run Y = tsne.tsne(X, no_dims, perplexity) to perform t-SNE on your dataset.")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--features", type=str, default="test_data/features.npy", help="features file")
+    parser.add_argument("--labels", type=str, default="test_data/labels.npy", help="label file")
+    parser.add_argument("--ppl", type=float, default=20., help="Perplexity")
+    parser.add_argument("--cuda", action="store_true", default=False, help="use cuda")
+    parser.add_argument("--output_file", type=str, default=None, help="output plot file")
+    args = parser.parse_args()
 
-    X = np.loadtxt(xfile)
-    X = torch.Tensor(X)
-    labels = np.loadtxt(yfile).tolist()
+    device = torch.device("cuda" if args.cuda and torch.cuda.is_available else "cpu")
+    X = torch.from_numpy(np.loadtxt(args.features))
+    labels = np.loadtxt(args.labels)
 
     # confirm that x file get same number point than label file
-    # otherwise may cause error in scatter
-    assert(len(X[:, 0])==len(X[:,1]))
-    assert(len(X)==len(labels))
+    assert len(X) == len(labels)
 
-    with torch.no_grad():
-        Y = tsne(X, 2, 50, 20.0)
+    Y = tsne(X, 2, 50, args.ppl, device=device).numpy()
 
-    if opt.cuda:
-        Y = Y.cpu().numpy()
-
-    # You may write result in two files
-    # print("Save Y values in file")
-    # Y1 = open("y1.txt", 'w')
-    # Y2 = open('y2.txt', 'w')
-    # for i in range(Y.shape[0]):
-    #     Y1.write(str(Y[i,0])+"\n")
-    #     Y2.write(str(Y[i,1])+"\n")
-
-    pyplot.scatter(Y[:, 0], Y[:, 1], 20, labels)
-    pyplot.show()
-
-    # X1 = torch.randn([10, 2048]).cuda()
-    # # no_dims=2, initial_dims=50, perplexity=30.0
-    # X_emb = tsne(X1, no_dims=2, perplexity=100., initial_dims=50)
+    plt.scatter(Y[:, 0], Y[:, 1], 20, labels)
+    (args.output_file and plt.savefig(args.output_file)) or plt.show()
