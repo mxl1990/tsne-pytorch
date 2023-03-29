@@ -42,7 +42,7 @@ def x2p_torch(X:torch.FloatTensor, tol=1e-5, perplexity=30.0, verbose=False):
 
     P = X.new_zeros(M, M)
     beta = X.new_ones(M, 1)
-    logU = torch.tensor([perplexity]).log()
+    logU = torch.tensor([perplexity]).type_as(X).log()
     indices = torch.arange(M)
 
     # Loop over all datapoints
@@ -136,13 +136,14 @@ def tsne(
     dY = torch.zeros_like(Y)
     iY = torch.zeros_like(Y)
     gains = torch.ones_like(Y)
+    eps = torch.tensor([eps]).type_as(X)
 
     # Compute P-values
     P = x2p_torch(X, 1e-5, perplexity, verbose)
     P += P.T.clone()
     P /= P.sum()
     P *= 4      # early exaggeration
-    P = torch.max(P, torch.tensor([eps]))
+    P = torch.max(P, eps)
 
     # Run iterations
     for iter in range(1, max_iter + 1):
@@ -153,7 +154,7 @@ def tsne(
         num = (1 + (num + SSY).T + SSY) ** -1
         num[torch.arange(M), torch.arange(M)] = 0.
         Q = num / num.sum()
-        Q = torch.max(Q, torch.tensor([eps]))
+        Q = torch.max(Q, eps)
 
         # Compute gradient
         PQ = P - Q
@@ -189,8 +190,8 @@ def tsne(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--features", type=str, default="test_data/features.npy", help="features file")
-    parser.add_argument("--labels", type=str, default="test_data/labels.npy", help="label file")
+    parser.add_argument("--features", type=str, default="test_data/iris_features.npy", help="features file")
+    parser.add_argument("--labels", type=str, default="test_data/iris_labels.npy", help="label file")
     parser.add_argument("--ppl", type=float, default=20., help="Perplexity")
     parser.add_argument("--cuda", action="store_true", default=False, help="use cuda")
     parser.add_argument("--output_file", type=str, default=None, help="output plot file")
