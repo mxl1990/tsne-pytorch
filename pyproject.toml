@@ -3,7 +3,7 @@ name = "tsne-torch"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12.6"
 dependencies = [
     "matplotlib>=3.10.5",
     "numpy>=2.3.2",

@@ -11,7 +11,12 @@ wheels/
 
 # Virtual environments
 .venv
+.env
+.python-version
 
 # IDE
 .vscode/
 .idea/
+
+# varia
+.DS_Store
