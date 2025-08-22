@@ -1,40 +1,38 @@
 # t-SNE pytorch Implementation with CUDA
-`pytorch` implementation of algorithm described in [Visualizing Data using t-SNE](https://lvdmaaten.github.io/publications/papers/JMLR_2014.pdf). This code support cuda accelerating.
+
+A [pytorch](https://pytorch.org) implementation of the tSNE algorithm described in [Visualizing Data using t-SNE](https://lvdmaaten.github.io/publications/papers/JMLR_2014.pdf) with CUDA acceleration.
+
+## Installation
+
+Clone this repository and install the required packages using [uv](https://docs.astral.sh/uv) as follows:
+
+```bash
+uv sync
+```
+
+This will install the required packages defined in the `pyproject.toml` file (or if available, `uv.lock`).
+
+To allow for importing `TorchTSNE` in other projects, add the path of the repository root to your PYTHONPATH as follows:
+
+```bash
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+```
 
 ## How to use it
-Just download the repository, and the unzip mnist2500_X.zip or put feature file and labels file with code
 
-<p align="left">1. run without cuda support</p>
+Just download the repository, and the unzip mnist2500_X.zip or put feature file and labels file with code.
+
+Then run `tsne_torch.py` given the desired inputs (and the `-v` verbose option to see what's happening under the hood):
 
 ```bash
-python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda 0
+python tsne_torch.py -x mnist2500_X.txt -y mnist2500_labels.txt -v
 ```
-2.run with cuda support 
-```bash
-python tsne_torch.py --xfile mnist2500_X.txt --yfile mnist2500_labels.txt --cuda 1
-```
+
+The script will automatically detect if a CUDA enabled GPU is available and make use of it.
+
 ***Note:*** The input data should be normalized to the range [0.0, 1.0], otherwise you may get the 'nan' result.
-
-## Requirements
-* pytorch
-* matplotlib, numpy
-
-
-## Example
-This is our result compare to result of python implementation.
-* pytorch result
-* use time 352s on 2080Ti GPU
-
-![computing time](images/pytorch_result.png)
-![pytorch result](images/pytorch.png)
-
-* python result
-* use time 634s on CPU
-
-![computing time](images/python_result.png)
-![python result](images/python.png)
 
 
 ## Credit
-This code highly inspired by 
-* author's python implementation code [here](https://lvdmaaten.github.io/tsne/).
+
+This code is inspired by https://lvdmaaten.github.io/tsne

@@ -185,6 +185,10 @@ def tsne(
     return Y if device == "cpu" else Y.cpu().numpy()
 
 
+class TorchTSNE:
+    pass
+
+
 def main(xfile, yfile, iter, perplex, lr, exager, seed, verbose):
     X = torch.Tensor(np.loadtxt(xfile))
     labels = np.loadtxt(yfile).tolist()
