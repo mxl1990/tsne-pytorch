@@ -186,7 +186,47 @@ def tsne(
 
 
 class TorchTSNE:
-    pass
+
+    def __init__(
+        self,
+        n_components=2,
+        perplexity=30.0,
+        max_iter=1000,
+        iter_explore=100,
+        initial_dims=50,
+        early_exager=12.0,
+        lr=500.0,
+        momentum_init=0.5,
+        momentum_final=0.8,
+        random_state=42,
+    ):
+        self._embedding = None
+        self.n_components = n_components
+        self.perplexity = perplexity
+        self.max_iter = max_iter
+        self.iter_explore = iter_explore
+        self.initial_dims = initial_dims
+        self.early_exager = early_exager
+        self.lr = lr
+        self.momentum_init = momentum_init
+        self.momentum_final = momentum_final
+        self.random_state = random_state
+
+    def fit_transform(self, x, verbose=False):
+        if not torch.is_tensor(x):
+            x = torch.tensor(x, dtype=torch.float32)
+        with torch.no_grad():
+            self._embedding = tsne(
+                x,
+                max_iter=self.max_iter,
+                iter_explore=self.iter_explore,
+                perplexity=self.perplexity,
+                lr=self.lr,
+                early_exager=self.early_exager,
+                seed=self.random_state,
+                verbose=verbose,
+            )
+        return self._embedding
 
 
 def main(xfile, yfile, iter, perplex, lr, exager, seed, verbose):

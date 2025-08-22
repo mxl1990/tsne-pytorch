@@ -2,7 +2,7 @@
 
 A [pytorch](https://pytorch.org) implementation of the tSNE algorithm described in [Visualizing Data using t-SNE](https://lvdmaaten.github.io/publications/papers/JMLR_2014.pdf) with CUDA acceleration.
 
-## Installation
+## Installation
 
 Clone this repository and install the required packages using [uv](https://docs.astral.sh/uv) as follows:
 
@@ -20,9 +20,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 ## How to use it
 
-Just download the repository, and the unzip mnist2500_X.zip or put feature file and labels file with code.
-
-Then run `tsne_torch.py` given the desired inputs (and the `-v` verbose option to see what's happening under the hood):
+To embed a dataset using `torch-tsne`, run `tsne_torch.py` given the desired input file and labels (and the `-v` verbose option to see what's happening under the hood):
 
 ```bash
 python tsne_torch.py -x mnist2500_X.txt -y mnist2500_labels.txt -v
@@ -30,8 +28,47 @@ python tsne_torch.py -x mnist2500_X.txt -y mnist2500_labels.txt -v
 
 The script will automatically detect if a CUDA enabled GPU is available and make use of it.
 
-***Note:*** The input data should be normalized to the range [0.0, 1.0], otherwise you may get the 'nan' result.
+***Note:*** The input data should be normalized to the range [0.0, 1.0], otherwise you may get a 'nan' result.
 
+### Using the TorchTSNE Class
+
+```python
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_circles
+from tsne_torch import TorchTSNE as TSNE
+
+# create a dummy dataset using sklearn
+X, y = make_circles(
+    n_samples=200, factor=0.5, noise=0.05, random_state=0
+)
+
+# create a torch-tsne tSNE object
+tsne = TSNE(
+    n_components=2,
+    random_state=42,
+    perplexity=30.0,
+    max_iter=1000,
+)
+
+# fit the tSNE like other sklearn objects
+Y = tsne.fit_transform(X, verbose=True)
+
+# visualize and save the result
+one, two = y == 0, y == 1
+fig, axes = plt.subplots(1, 2, figsize=(9, 4))
+axes[0].scatter(X[one, 0], X[one, 1], c="b")
+axes[0].scatter(X[two, 0], X[two, 1], c="r")
+axes[0].set_title("Input")
+axes[1].scatter(Y[one, 0], Y[one, 1], c="b")
+axes[1].scatter(Y[two, 0], Y[two, 1], c="r")
+axes[1].set_title("tSNE output")
+plt.savefig("images/circles.png", dpi=150)
+plt.close(fig)
+```
+
+The result should look something like this:
+
+![circles](images/circles.png)
 
 ## Credit
 
