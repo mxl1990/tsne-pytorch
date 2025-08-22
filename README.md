@@ -20,10 +20,10 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 
 ## How to use it
 
-To embed a dataset using `torch-tsne`, run `tsne_torch.py` given the desired input file and labels (and the `-v` verbose option to see what's happening under the hood):
+To embed a dataset using `torch-tsne`, run `torch_tsne.py` given the desired input file and labels (and the `-v` verbose option to see what's happening under the hood):
 
 ```bash
-python tsne_torch.py -x mnist2500_X.txt -y mnist2500_labels.txt -v
+python torch_tsne.py -x mnist2500_X.txt -y mnist2500_labels.txt -v
 ```
 
 The script will automatically detect if a CUDA enabled GPU is available and make use of it.
@@ -35,7 +35,7 @@ The script will automatically detect if a CUDA enabled GPU is available and make
 ```python
 import matplotlib.pyplot as plt
 from sklearn.datasets import make_circles
-from tsne_torch import TorchTSNE as TSNE
+from torch_tsne import TorchTSNE as TSNE
 
 # create a dummy dataset using sklearn
 X, y = make_circles(
