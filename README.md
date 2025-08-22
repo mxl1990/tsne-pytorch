@@ -1,4 +1,4 @@
-# t-SNE pytorch Implementation with CUDA
+# t-SNE PyTorch Implementation With CUDA
 
 A [pytorch](https://pytorch.org) implementation of the tSNE algorithm described in [Visualizing Data using t-SNE](https://lvdmaaten.github.io/publications/papers/JMLR_2014.pdf) with CUDA acceleration.
 
@@ -72,4 +72,8 @@ The result should look something like this:
 
 ## Credit
 
-This code is inspired by https://lvdmaaten.github.io/tsne
+This code is inspired by https://lvdmaaten.github.io/
+
+The original repository is by https://github.com/mxl1990/tsne-pytorch
+
+This code is based on additional optimizations by https://github.com/palle-k/tsne-pytorch
